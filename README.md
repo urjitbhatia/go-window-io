@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/urjitbhatia/go-window-io.svg?branch=master)](https://travis-ci.org/urjitbhatia/go-window-io)
 [![GoDoc](https://godoc.org/github.com/urjitbhatia/go-window-io?status.svg)](https://godoc.org/github.com/urjitbhatia/go-window-io)
+[![Go Report Card](https://goreportcard.com/badge/github.com/urjitbhatia/go-window-io)](https://goreportcard.com/report/github.com/urjitbhatia/go-window-io)
 
 A Sliding window over arbitrary io.Readers in go.
 
