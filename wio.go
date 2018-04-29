@@ -19,9 +19,9 @@ type wReader struct {
 	ring            *ring.Ring    // Internal ring of data
 }
 
-// New converts an io.Reader into a windowed io.Reader with a window
-// size of wSize, and sSize size of stepSize
-func New(r io.Reader, wSize, sSize int) WindowReader {
+// NewStepping converts an io.Reader into a windowed io.Reader with a window
+// size of wSize, and a step size of sSize
+func NewStepping(r io.Reader, wSize, sSize int) WindowReader {
 	return &wReader{
 		reader: bufio.NewReader(r),
 		wSize:  wSize,
@@ -31,9 +31,9 @@ func New(r io.Reader, wSize, sSize int) WindowReader {
 
 // NewRolling converts an io.Reader into a rolling windowed io.Reader
 // The size of a Rolling Window is 1.
-// This is same as calling: New(reader, 1)
+// This is same as calling: NewStepping(reader, w, 1)
 func NewRolling(r io.Reader, w int) WindowReader {
-	return New(r, w, 1)
+	return NewStepping(r, w, 1)
 }
 
 // Read the next "window" into the given buffer

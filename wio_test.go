@@ -42,7 +42,7 @@ var _ = Describe("Test window io", func() {
 			wSize := 4
 			sSize := 3
 			rollingBuf := []byte("\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09") // len 10
-			rollingReader := wio.New(bytes.NewBuffer(rollingBuf), wSize, sSize)
+			rollingReader := wio.NewStepping(bytes.NewBuffer(rollingBuf), wSize, sSize)
 
 			// Number of rolling reads should be: math.Ceil((bufLen - wSize)/sSize + 1)
 			count := int(math.Ceil(float64(len(rollingBuf)-wSize)/float64(sSize)) + 1.00)
