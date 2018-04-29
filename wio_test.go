@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"math"
+	"math/rand"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -14,7 +15,7 @@ import (
 var _ = Describe("Test window io", func() {
 	Context("Rolling window - roll over by 1", func() {
 		It("provides a rolling window over data", func() {
-			wSize := 7
+			wSize := 3
 			rollingBuf := []byte("\x00\x01\x02\x03\x04\x05\x06\x07\x08") // len 9
 			rollingReader := wio.NewRolling(bytes.NewBuffer(rollingBuf), wSize)
 
@@ -33,6 +34,39 @@ var _ = Describe("Test window io", func() {
 			// Next one should err with EOF
 			_, err := rollingReader.Read(buf[:wSize])
 			Expect(err).To(Equal(io.EOF))
+		})
+
+		It("provides a rolling window over data - random window size (upto data len)", func() {
+			rollingBuf := []byte("\x00\x01\x02\x03\x04\x05\x06\x07\x08\x00\x01\x02\x03\x04\x05\x06\x07\x08")
+			wSize := rand.Intn(len(rollingBuf) + 1)
+			rollingReader := wio.NewRolling(bytes.NewBuffer(rollingBuf), wSize)
+
+			// Number of rolling reads should be: bufLen - wSize + 1
+			count := len(rollingBuf) - wSize + 1
+
+			buf := [64]byte{}
+			for i := 0; i < count; i++ {
+				// For each rolling Hash, check it has the right value
+				b := rollingBuf[i : i+wSize]
+				n, err := rollingReader.Read(buf[:wSize])
+				Expect(err).To(BeNil())
+				Expect(n > 0).To(BeTrue())
+				Expect(buf[:n]).To(Equal(b))
+			}
+			// Next one should err with EOF
+			_, err := rollingReader.Read(buf[:wSize])
+			Expect(err).To(Equal(io.EOF))
+		})
+
+		It("returns a short buffer error if read buf is smaller than window size", func() {
+			rollingBuf := []byte("\x00\x01\x02\x03\x04\x05\x06\x07\x08\x00\x01\x02\x03\x04\x05\x06\x07\x08")
+			wSize := 5
+			rollingReader := wio.NewRolling(bytes.NewBuffer(rollingBuf), wSize)
+
+			buf := [5]byte{}
+			n, err := rollingReader.Read(buf[:wSize-2])
+			Expect(err).To(Equal(io.ErrShortBuffer))
+			Expect(n).To(Equal(0))
 		})
 
 	})
@@ -68,5 +102,16 @@ var _ = Describe("Test window io", func() {
 			Expect(err).To(Equal(io.EOF))
 		})
 
+		It("returns a short buffer error if read buf is smaller than window size", func() {
+			rollingBuf := []byte("\x00\x01\x02\x03\x04\x05\x06\x07\x08\x00\x01\x02\x03\x04\x05\x06\x07\x08")
+			wSize := 5
+			sSize := 5
+			rollingReader := wio.NewStepping(bytes.NewBuffer(rollingBuf), wSize, sSize)
+
+			buf := [5]byte{}
+			n, err := rollingReader.Read(buf[:wSize-2])
+			Expect(err).To(Equal(io.ErrShortBuffer))
+			Expect(n).To(Equal(0))
+		})
 	})
 })
