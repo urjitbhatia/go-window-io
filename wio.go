@@ -7,6 +7,8 @@ import (
 	"log"
 )
 
+// WindowReader wraps io.Reader and reads in a window of data
+// The window size and the window rolling step size can be configured
 type WindowReader interface {
 	io.Reader
 }
