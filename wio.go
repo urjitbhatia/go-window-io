@@ -3,6 +3,7 @@ package wio
 import (
 	"bufio"
 	"container/ring"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -23,21 +24,40 @@ type wReader struct {
 	ring            *ring.Ring    // Internal ring of data
 }
 
+// ErrDisjointWindow - Step size has to be >= 1 && <= window size
+var ErrDisjointWindow = errors.New("Step size cannot be larger than window size")
+
+// ErrZeroWindowSize - Window size has to be >= 1
+var ErrZeroWindowSize = errors.New("Window size cannot be zero. Should be 1 or more")
+
+// ErrZeroStepSize - Step size has to be >= 1
+var ErrZeroStepSize = errors.New("Step size cannot be zero. Should be 1 or more")
+
 // NewStepping converts an io.Reader into a windowed io.Reader with a window
 // size of wSize, and a step size of sSize
-func NewStepping(r io.Reader, wSize, sSize int) WindowReader {
+func NewStepping(r io.Reader, wSize, sSize int) (WindowReader, error) {
+	if sSize == 0 {
+		return nil, ErrZeroStepSize
+	}
+	if sSize > wSize {
+		return nil, ErrDisjointWindow
+	}
 	return &wReader{
-		reader: bufio.NewReader(r),
-		wSize:  wSize,
-		sSize:  sSize,
-		ring:   ring.New(wSize)}
+			reader: bufio.NewReader(r),
+			wSize:  wSize,
+			sSize:  sSize,
+			ring:   ring.New(wSize)},
+		nil
 }
 
 // NewRolling converts an io.Reader into a rolling windowed io.Reader
 // The size of a Rolling Window is 1.
 // This is same as calling: NewStepping(reader, w, 1)
-func NewRolling(r io.Reader, w int) WindowReader {
-	return NewStepping(r, w, 1)
+func NewRolling(r io.Reader, wSize int) (WindowReader, error) {
+	if wSize == 0 {
+		return nil, ErrZeroWindowSize
+	}
+	return NewStepping(r, wSize, 1)
 }
 
 // Read the next "window" into the given buffer
@@ -68,7 +88,9 @@ func (w *wReader) Read(buf []byte) (int, error) {
 			if i > 0 {
 				// We consumed some last remaining data, put it in the ring
 				// and unlink the things we consumed
-				w.ring = w.ring.Unlink(w.sSize - i + 1)
+				w.ring = w.ring.Prev()
+				w.ring.Unlink(w.sSize - i)
+				w.ring = w.ring.Next()
 				break
 			}
 			return 0, err
