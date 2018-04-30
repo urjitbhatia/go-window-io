@@ -2,6 +2,7 @@ package wio_test
 
 import (
 	"bytes"
+	"container/ring"
 	"io"
 	"log"
 	"math"
@@ -112,6 +113,21 @@ var _ = Describe("Test window io", func() {
 			n, err := rollingReader.Read(buf[:wSize-2])
 			Expect(err).To(Equal(io.ErrShortBuffer))
 			Expect(n).To(Equal(0))
+		})
+	})
+
+	Context("Print ring", func() {
+		It("prints the current state of container/ring", func() {
+			r := ring.New(5)
+			for i := 0; i < r.Len(); i++ {
+				r.Value = i
+				r = r.Next()
+			}
+			buf := bytes.Buffer{}
+			log.SetOutput(&buf)
+			wio.PrintRing(r, "test ring")
+			Expect(buf.String()).To(ContainSubstring("test ring :: Ring: [0, 1, 2, 3, 4]"))
+			log.SetOutput(GinkgoWriter)
 		})
 	})
 })

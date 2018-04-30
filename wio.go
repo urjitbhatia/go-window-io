@@ -3,8 +3,10 @@ package wio
 import (
 	"bufio"
 	"container/ring"
+	"fmt"
 	"io"
 	"log"
+	"strings"
 )
 
 // WindowReader wraps io.Reader and reads in a window of data
@@ -66,9 +68,7 @@ func (w *wReader) Read(buf []byte) (int, error) {
 			if i > 0 {
 				// We consumed some last remaining data, put it in the ring
 				// and unlink the things we consumed
-				PrintRing(w.ring, "before unlink")
 				w.ring = w.ring.Unlink(w.sSize - i + 1)
-				PrintRing(w.ring, "after unlink")
 				break
 			}
 			return 0, err
@@ -87,10 +87,11 @@ func (w *wReader) Read(buf []byte) (int, error) {
 // PrintRing is a helpful debug function that prints a ring
 // with the given message
 func PrintRing(r *ring.Ring, msg string) {
-	vals := []interface{}{}
+	s := []string{}
 	for i := 0; i < r.Len(); i++ {
-		vals = append(vals, r.Value)
+		s = append(s, fmt.Sprintf("%v", r.Value))
 		r = r.Next()
 	}
-	log.Printf("%s :: Ring: %v", msg, vals)
+
+	log.Printf("%s :: Ring: [%s]", msg, strings.Join(s, ", "))
 }
