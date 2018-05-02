@@ -3,10 +3,12 @@ package wio_test
 import (
 	"bytes"
 	"container/ring"
+	"fmt"
 	"io"
 	"log"
 	"math"
 	"math/rand"
+	"testing"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -193,4 +195,64 @@ var _ = Describe("Test window io", func() {
 			log.SetOutput(GinkgoWriter)
 		})
 	})
+
+	Measure("benchmark rolling window", func(b Benchmarker) {
+		rand.Seed(time.Now().Unix())
+		wSize := 3
+		rollingBuf := [1024 * 10]byte{} //10 kb buffer
+		_, err := rand.Read(rollingBuf[:])
+		Expect(err).To(BeNil())
+		rollingReader, err := wio.NewRolling(bytes.NewBuffer(rollingBuf[:]), wSize)
+		Expect(err).To(BeNil())
+
+		// Number of rolling reads should be: bufLen - wSize + 1
+		buf := [64]byte{}
+
+		runtime := b.Time("runtime", func() {
+			for {
+				// For each rolling Hash, check it has the right value
+				n, err := rollingReader.Read(buf[:wSize])
+				if err == io.EOF {
+					break
+				}
+				Expect(n).To(Equal(wSize))
+			}
+		})
+
+		Ω(runtime.Seconds()).Should(BeNumerically("<", 0.2), "SomethingHard() shouldn't take too long.")
+	}, 1000)
 })
+
+func BenchmarkRollingWindow(b *testing.B) {
+	// run the Fib function b.N times
+	rand.Seed(time.Now().Unix())
+	rollingBuf := [1024 * 10]byte{} //10 kb buffer
+	_, err := rand.Read(rollingBuf[:])
+	if err != nil {
+		b.Error(err)
+	}
+	b.ResetTimer()
+	for wSize := 1; wSize < len(rollingBuf)/10; wSize += len(rollingBuf) / 50 {
+		b.StopTimer()
+		rollingReader, err := wio.NewRolling(bytes.NewBuffer(rollingBuf[:]), wSize)
+		if err != nil {
+			b.Error(err)
+		}
+		buf := make([]byte, wSize)
+		b.StartTimer()
+		b.Run(fmt.Sprintf("BufSize: %d wSize: %d", len(rollingBuf), wSize), func(b *testing.B) {
+			for i := 0; i < b.N; i++ {
+				for {
+					// For each rolling Hash, check it has the right value
+					n, err := rollingReader.Read(buf[:wSize])
+					if err == io.EOF {
+						break
+					}
+					if n != wSize {
+						b.Fatal("expected byte read count: ", wSize)
+					}
+				}
+			}
+		})
+	}
+}
